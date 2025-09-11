@@ -14,7 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      detections: {
+        Row: {
+          bbox_json: Json
+          class: string
+          created_at: string
+          density: number
+          frame_number: number
+          id: string
+          junction_id: string
+          timestamp: string
+          vehicles_count: number
+        }
+        Insert: {
+          bbox_json: Json
+          class: string
+          created_at?: string
+          density?: number
+          frame_number: number
+          id?: string
+          junction_id: string
+          timestamp?: string
+          vehicles_count?: number
+        }
+        Update: {
+          bbox_json?: Json
+          class?: string
+          created_at?: string
+          density?: number
+          frame_number?: number
+          id?: string
+          junction_id?: string
+          timestamp?: string
+          vehicles_count?: number
+        }
+        Relationships: []
+      }
+      junction_stats: {
+        Row: {
+          avg_density: number
+          created_at: string
+          id: string
+          junction_id: string
+          recommended_green_time: number
+          updated_at: string
+        }
+        Insert: {
+          avg_density?: number
+          created_at?: string
+          id?: string
+          junction_id: string
+          recommended_green_time?: number
+          updated_at?: string
+        }
+        Update: {
+          avg_density?: number
+          created_at?: string
+          id?: string
+          junction_id?: string
+          recommended_green_time?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
