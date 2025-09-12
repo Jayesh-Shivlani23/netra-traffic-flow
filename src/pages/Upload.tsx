@@ -2,10 +2,11 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Upload, Play, Pause, Square, Activity } from "lucide-react";
+import { Upload, Play, Pause, Square, Activity, FileVideo, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import Navigation from "@/components/Navigation";
+import { motion } from "framer-motion";
 
 const UploadAnalyze = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -228,155 +229,277 @@ const UploadAnalyze = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <motion.div 
+      className="min-h-screen bg-background"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6 }}
+    >
       <Navigation />
       
       <div className="container mx-auto px-6 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Upload & Analyze</h1>
-          <p className="text-muted-foreground">Upload traffic videos for AI-powered analysis</p>
-        </div>
+        <motion.div 
+          className="mb-8"
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.6 }}
+        >
+          <h1 className="text-4xl font-bold text-foreground mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Upload & Analyze
+          </h1>
+          <p className="text-muted-foreground text-lg">Upload traffic videos for AI-powered analysis and optimization</p>
+        </motion.div>
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Upload Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Upload className="h-5 w-5" />
-                <span>Video Upload</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div
-                className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-lg font-medium mb-2">
-                  {selectedFile ? selectedFile.name : "Choose video file"}
-                </p>
-                <p className="text-muted-foreground">
-                  Click to upload or drag and drop
-                </p>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="video/*"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              
-              {selectedFile && (
-                <div className="mt-6 space-y-4">
-                  <div className="flex items-center space-x-4">
-                    <Button
-                      onClick={togglePlayPause}
-                      variant="outline"
-                      size="sm"
-                    >
-                      {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    </Button>
-                    <Button
-                      onClick={stopVideo}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <Square className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <Button 
-                    onClick={startAnalysis} 
-                    className="w-full" 
-                    disabled={isAnalyzing}
+          <motion.div
+            initial={{ x: -50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.6 }}
+          >
+            <Card className="shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-soft)] transition-all duration-300">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <motion.div
+                    className="p-2 gradient-primary rounded-lg"
+                    whileHover={{ rotate: 5, scale: 1.1 }}
+                    transition={{ type: "spring", stiffness: 300 }}
                   >
-                    <Activity className="h-4 w-4 mr-2" />
-                    {isAnalyzing ? "Analyzing..." : "Start AI Analysis"}
-                  </Button>
+                    <Upload className="h-5 w-5 text-primary-foreground" />
+                  </motion.div>
+                  <span>Video Upload</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <motion.div
+                  className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-primary transition-all duration-300 hover:bg-primary/5 group"
+                  onClick={() => fileInputRef.current?.click()}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <motion.div
+                    className="mx-auto mb-4"
+                    animate={{ y: [0, -5, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <FileVideo className="h-16 w-16 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </motion.div>
+                  <p className="text-lg font-medium mb-2 group-hover:text-primary transition-colors">
+                    {selectedFile ? selectedFile.name : "Choose video file"}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Click to upload or drag and drop
+                  </p>
+                </motion.div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                
+                {selectedFile && (
+                  <motion.div 
+                    className="mt-6 space-y-4"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <div className="flex items-center space-x-4">
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                        <Button
+                          onClick={togglePlayPause}
+                          variant="outline"
+                          size="sm"
+                        >
+                          {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                        </Button>
+                      </motion.div>
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                        <Button
+                          onClick={stopVideo}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Square className="h-4 w-4" />
+                        </Button>
+                      </motion.div>
+                    </div>
+                    
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                      <Button 
+                        onClick={startAnalysis} 
+                        className="w-full gradient-primary shadow-[var(--shadow-soft)]" 
+                        disabled={isAnalyzing}
+                      >
+                        <motion.div
+                          animate={isAnalyzing ? { rotate: 360 } : {}}
+                          transition={isAnalyzing ? { duration: 2, repeat: Infinity, ease: "linear" } : {}}
+                        >
+                          <Zap className="h-4 w-4 mr-2" />
+                        </motion.div>
+                        {isAnalyzing ? "Analyzing..." : "Start AI Analysis"}
+                      </Button>
+                    </motion.div>
 
-                  {/* Progress Bar */}
-                  {isAnalyzing && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Processing frames...</span>
-                        <span>{Math.round(analysisProgress)}%</span>
-                      </div>
-                      <Progress value={analysisProgress} className="w-full" />
+                    {/* Progress Bar */}
+                    {isAnalyzing && (
+                      <motion.div 
+                        className="space-y-2"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <div className="flex justify-between text-sm">
+                          <span>Processing frames...</span>
+                          <span>{Math.round(analysisProgress)}%</span>
+                        </div>
+                        <Progress value={analysisProgress} className="w-full" />
+                      </motion.div>
+                    )}
+                  </motion.div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Video Player Section */}
+          <motion.div
+            initial={{ x: 50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.4, duration: 0.6 }}
+          >
+            <Card className="shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-soft)] transition-all duration-300">
+              <CardHeader>
+                <CardTitle>Video Preview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="relative aspect-video bg-gradient-to-br from-muted/30 to-muted/60 rounded-xl overflow-hidden border border-border/50">
+                  {videoUrl ? (
+                    <>
+                      <video
+                        ref={videoRef}
+                        src={videoUrl}
+                        className="w-full h-full object-cover"
+                        onPlay={() => setIsPlaying(true)}
+                        onPause={() => setIsPlaying(false)}
+                      />
+                      <canvas
+                        ref={canvasRef}
+                        className="absolute inset-0 pointer-events-none"
+                        style={{ mixBlendMode: 'multiply' }}
+                      />
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                      <motion.div
+                        animate={{ opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="text-center"
+                      >
+                        <FileVideo className="h-16 w-16 mx-auto mb-4" />
+                        <p>No video selected</p>
+                      </motion.div>
                     </div>
                   )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Video Player Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Video Preview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
-                {videoUrl ? (
-                  <>
-                    <video
-                      ref={videoRef}
-                      src={videoUrl}
-                      className="w-full h-full object-cover"
-                      onPlay={() => setIsPlaying(true)}
-                      onPause={() => setIsPlaying(false)}
-                    />
-                    <canvas
-                      ref={canvasRef}
-                      className="absolute inset-0 pointer-events-none"
-                      style={{ mixBlendMode: 'multiply' }}
-                    />
-                  </>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    No video selected
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
 
         {/* Analysis Results */}
         {analysisResults && (
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Activity className="h-5 w-5" />
-                <span>Analysis Results</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">
-                    {analysisResults.totalFrames}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Total Frames Analyzed</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-secondary">
-                    {analysisResults.avgVehicles.toFixed(1)}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Avg Vehicles per Frame</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-accent">
-                    {(analysisResults.avgDensity * 100).toFixed(1)}%
-                  </div>
-                  <div className="text-sm text-muted-foreground">Average Traffic Density</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <Card className="mt-8 shadow-[var(--shadow-card)] border-primary/20">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <motion.div
+                    className="p-2 gradient-accent rounded-lg"
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <Activity className="h-5 w-5 text-accent-foreground" />
+                  </motion.div>
+                  <span>Analysis Results</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <motion.div 
+                  className="grid grid-cols-1 md:grid-cols-3 gap-6"
+                  variants={{
+                    hidden: { opacity: 0 },
+                    visible: {
+                      opacity: 1,
+                      transition: { staggerChildren: 0.1 }
+                    }
+                  }}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  <motion.div 
+                    className="text-center p-6 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20"
+                    variants={{
+                      hidden: { y: 20, opacity: 0 },
+                      visible: { y: 0, opacity: 1 }
+                    }}
+                  >
+                    <motion.div 
+                      className="text-3xl font-bold text-primary mb-2"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 200, delay: 0.3 }}
+                    >
+                      {analysisResults.totalFrames}
+                    </motion.div>
+                    <div className="text-sm text-muted-foreground">Total Frames Analyzed</div>
+                  </motion.div>
+                  <motion.div 
+                    className="text-center p-6 rounded-xl bg-gradient-to-br from-accent/10 to-accent/5 border border-accent/20"
+                    variants={{
+                      hidden: { y: 20, opacity: 0 },
+                      visible: { y: 0, opacity: 1 }
+                    }}
+                  >
+                    <motion.div 
+                      className="text-3xl font-bold text-accent mb-2"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 200, delay: 0.5 }}
+                    >
+                      {analysisResults.avgVehicles.toFixed(1)}
+                    </motion.div>
+                    <div className="text-sm text-muted-foreground">Avg Vehicles per Frame</div>
+                  </motion.div>
+                  <motion.div 
+                    className="text-center p-6 rounded-xl bg-gradient-to-br from-success/10 to-success/5 border border-success/20"
+                    variants={{
+                      hidden: { y: 20, opacity: 0 },
+                      visible: { y: 0, opacity: 1 }
+                    }}
+                  >
+                    <motion.div 
+                      className="text-3xl font-bold text-success mb-2"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 200, delay: 0.7 }}
+                    >
+                      {(analysisResults.avgDensity * 100).toFixed(1)}%
+                    </motion.div>
+                    <div className="text-sm text-muted-foreground">Average Traffic Density</div>
+                  </motion.div>
+                </motion.div>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

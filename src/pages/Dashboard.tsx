@@ -161,80 +161,90 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Vehicles per Minute Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Vehicles per Minute</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={sampleVehicleData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="time" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="vehicles" fill="hsl(var(--primary))" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Key Metrics - First 2 columns */}
+          <div className="lg:col-span-2 grid md:grid-cols-2 gap-6">
+            {/* Vehicles per Minute Chart */}
+            <Card className="shadow-[var(--shadow-card)]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Car className="h-5 w-5 text-primary" />
+                  Vehicles per Minute
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={sampleVehicleData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="vehicles" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
 
-          {/* Traffic Density Line Graph */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Traffic Density Over Time</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={sampleDensityData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="time" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line 
-                      type="monotone" 
-                      dataKey="density" 
-                      stroke="hsl(var(--success))" 
-                      strokeWidth={3}
-                      dot={{ fill: "hsl(var(--success))" }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            {/* Traffic Density Line Graph */}
+            <Card className="shadow-[var(--shadow-card)]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-success" />
+                  Traffic Density
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={sampleDensityData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line 
+                        type="monotone" 
+                        dataKey="density" 
+                        stroke="hsl(var(--success))" 
+                        strokeWidth={3}
+                        dot={{ fill: "hsl(var(--success))" }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-        {/* Green Time Recommendation */}
-        <div className="mt-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Clock className="h-5 w-5" />
-                <span>Traffic Light Optimization</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-3 gap-6">
+          {/* Simulation Preview - Third column */}
+          <div className="space-y-6">
+            <SimulationPreview />
+            
+            {/* Optimization Stats */}
+            <Card className="shadow-[var(--shadow-card)]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-accent" />
+                  Optimization
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-success mb-2">{recommendedGreenTime}s</div>
-                  <p className="text-muted-foreground">Recommended Green Time</p>
+                  <div className="text-2xl font-bold text-success mb-1">{recommendedGreenTime}s</div>
+                  <p className="text-sm text-muted-foreground">Recommended Green Time</p>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-warning mb-2">15%</div>
-                  <p className="text-muted-foreground">Efficiency Improvement</p>
+                  <div className="text-2xl font-bold text-warning mb-1">15%</div>
+                  <p className="text-sm text-muted-foreground">Efficiency Improvement</p>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-primary mb-2">2.3min</div>
-                  <p className="text-muted-foreground">Avg Wait Time Reduction</p>
+                  <div className="text-2xl font-bold text-primary mb-1">2.3min</div>
+                  <p className="text-sm text-muted-foreground">Wait Time Reduction</p>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

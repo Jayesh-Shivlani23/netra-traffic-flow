@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { Upload, BarChart3, Zap, Car, Brain, TrendingUp } from "lucide-react";
+import { Upload, BarChart3, Car, Brain, TrendingUp, ArrowRight } from "lucide-react";
 import Navigation from "@/components/Navigation";
+import { motion } from "framer-motion";
 import heroImage from "@/assets/hero-traffic.jpg";
 
 const Index = () => {
@@ -20,129 +21,255 @@ const Index = () => {
       link: "/dashboard",
     },
     {
-      icon: Zap,
-      title: "Traffic Simulation",
-      description: "Interactive traffic light control and vehicle flow simulation",
-      link: "/simulation",
+      icon: Brain,
+      title: "AI Optimization", 
+      description: "Intelligent signal timing and traffic flow optimization algorithms",
+      link: "/dashboard",
     },
   ];
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring" as const,
+        stiffness: 100
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
       
       {/* Hero Section */}
-      <section className="relative py-20 overflow-hidden">
+      <motion.section 
+        className="relative py-24 overflow-hidden"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.8 }}
+      >
         <div className="absolute inset-0">
           <img 
             src={heroImage} 
             alt="Smart city traffic control center" 
-            className="w-full h-full object-cover opacity-20"
+            className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/90 to-background/70"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/80 to-background/60"></div>
         </div>
         
         <div className="relative container mx-auto px-6 text-center">
-          <div className="max-w-4xl mx-auto">
-            <h1 className="text-5xl font-bold text-foreground mb-6 leading-tight">
+          <motion.div 
+            className="max-w-4xl mx-auto"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.h1 
+              className="text-6xl font-bold text-foreground mb-6 leading-tight"
+              variants={itemVariants}
+            >
               AI-Powered Traffic 
-              <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent"> Optimization</span>
-            </h1>
-            <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
+              <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent block mt-2">
+                Optimization
+              </span>
+            </motion.h1>
+            <motion.p 
+              className="text-xl text-muted-foreground mb-10 leading-relaxed max-w-3xl mx-auto"
+              variants={itemVariants}
+            >
               Transform urban mobility with intelligent traffic analysis. Netra uses advanced AI to detect vehicles, 
               analyze traffic patterns, and optimize signal timing for reduced congestion and improved flow.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="text-lg px-8">
-                <Link to="/upload">Start Analysis</Link>
+            </motion.p>
+            <motion.div 
+              className="flex flex-col sm:flex-row gap-4 justify-center"
+              variants={itemVariants}
+            >
+              <Button asChild variant="gradient" size="lg" className="text-lg px-8 shadow-[var(--shadow-elegant)]">
+                <Link to="/upload" className="flex items-center gap-2">
+                  Start Analysis
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="text-lg px-8">
                 <Link to="/dashboard">View Dashboard</Link>
               </Button>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Features Section */}
-      <section className="py-16 bg-muted/30">
+      <section className="py-20 bg-gradient-subtle">
         <div className="container mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4">Intelligent Traffic Solutions</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <motion.div 
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <h2 className="text-4xl font-bold text-foreground mb-4">Intelligent Traffic Solutions</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Comprehensive tools for traffic analysis, monitoring, and optimization
             </p>
-          </div>
+          </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <motion.div 
+            className="grid md:grid-cols-3 gap-8"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
             {features.map((feature, index) => {
               const Icon = feature.icon;
               return (
-                <Card key={index} className="hover:shadow-lg transition-all duration-300 border-0 bg-card/50 backdrop-blur-sm">
-                  <CardHeader className="text-center pb-4">
-                    <div className="mx-auto mb-4 p-3 bg-primary/10 rounded-full w-fit">
-                      <Icon className="h-8 w-8 text-primary" />
-                    </div>
-                    <CardTitle className="text-xl">{feature.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-center">
-                    <p className="text-muted-foreground mb-6">
-                      {feature.description}
-                    </p>
-                    <Button asChild variant="outline" className="w-full">
-                      <Link to={feature.link}>Explore</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
+                <motion.div key={index} variants={itemVariants}>
+                  <Card className="h-full hover:shadow-[var(--shadow-elegant)] transition-all duration-500 border-0 bg-card/90 backdrop-blur-sm group hover:-translate-y-2">
+                    <CardHeader className="text-center pb-4">
+                      <motion.div 
+                        className="mx-auto mb-4 p-4 gradient-primary rounded-xl w-fit shadow-[var(--shadow-soft)]"
+                        whileHover={{ scale: 1.1, rotate: 5 }}
+                        transition={{ type: "spring", stiffness: 300 }}
+                      >
+                        <Icon className="h-8 w-8 text-primary-foreground" />
+                      </motion.div>
+                      <CardTitle className="text-xl group-hover:text-primary transition-colors">
+                        {feature.title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-center">
+                      <p className="text-muted-foreground mb-6 leading-relaxed">
+                        {feature.description}
+                      </p>
+                      <Button asChild variant="outline" className="w-full group-hover:border-primary group-hover:text-primary">
+                        <Link to={feature.link} className="flex items-center justify-center gap-2">
+                          Explore
+                          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                        </Link>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Stats Section */}
-      <section className="py-16">
+      <section className="py-20">
         <div className="container mx-auto px-6">
-          <div className="grid md:grid-cols-3 gap-8 text-center">
-            <div className="space-y-2">
-              <div className="flex items-center justify-center mb-4">
-                <Car className="h-8 w-8 text-primary mr-2" />
-              </div>
-              <div className="text-4xl font-bold text-foreground">99.2%</div>
+          <motion.div 
+            className="grid md:grid-cols-3 gap-8 text-center"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            <motion.div className="space-y-4" variants={itemVariants}>
+              <motion.div 
+                className="flex items-center justify-center mb-4"
+                whileHover={{ scale: 1.1 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <div className="p-3 gradient-primary rounded-xl shadow-[var(--shadow-soft)]">
+                  <Car className="h-8 w-8 text-primary-foreground" />
+                </div>
+              </motion.div>
+              <motion.div 
+                className="text-5xl font-bold text-foreground"
+                initial={{ scale: 0 }}
+                whileInView={{ scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+              >
+                99.2%
+              </motion.div>
               <div className="text-muted-foreground">Vehicle Detection Accuracy</div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-center mb-4">
-                <TrendingUp className="h-8 w-8 text-success mr-2" />
-              </div>
-              <div className="text-4xl font-bold text-foreground">35%</div>
+            </motion.div>
+            <motion.div className="space-y-4" variants={itemVariants}>
+              <motion.div 
+                className="flex items-center justify-center mb-4"
+                whileHover={{ scale: 1.1 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <div className="p-3 bg-success/20 text-success rounded-xl shadow-[var(--shadow-soft)]">
+                  <TrendingUp className="h-8 w-8" />
+                </div>
+              </motion.div>
+              <motion.div 
+                className="text-5xl font-bold text-foreground"
+                initial={{ scale: 0 }}
+                whileInView={{ scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ type: "spring", stiffness: 200, delay: 0.4 }}
+              >
+                35%
+              </motion.div>
               <div className="text-muted-foreground">Average Congestion Reduction</div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-center mb-4">
-                <Brain className="h-8 w-8 text-accent mr-2" />
-              </div>
-              <div className="text-4xl font-bold text-foreground">Real-time</div>
+            </motion.div>
+            <motion.div className="space-y-4" variants={itemVariants}>
+              <motion.div 
+                className="flex items-center justify-center mb-4"
+                whileHover={{ scale: 1.1 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <div className="p-3 gradient-accent rounded-xl shadow-[var(--shadow-soft)]">
+                  <Brain className="h-8 w-8 text-accent-foreground" />
+                </div>
+              </motion.div>
+              <motion.div 
+                className="text-5xl font-bold text-foreground"
+                initial={{ scale: 0 }}
+                whileInView={{ scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ type: "spring", stiffness: 200, delay: 0.6 }}
+              >
+                Real-time
+              </motion.div>
               <div className="text-muted-foreground">AI Processing & Analysis</div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-primary/10 to-accent/10">
+      <motion.section 
+        className="py-24 gradient-subtle"
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8 }}
+      >
         <div className="container mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold text-foreground mb-4">
+          <h2 className="text-4xl font-bold text-foreground mb-6">
             Ready to Optimize Your Traffic?
           </h2>
-          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
             Join cities worldwide using AI to improve traffic flow and reduce urban congestion
           </p>
-          <Button asChild size="lg" className="text-lg px-8">
-            <Link to="/upload">Get Started Today</Link>
+          <Button asChild variant="gradient" size="lg" className="text-lg px-8 shadow-[var(--shadow-elegant)]">
+            <Link to="/upload" className="flex items-center gap-2">
+              Get Started Today
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </Button>
         </div>
-      </section>
+      </motion.section>
     </div>
   );
 };
