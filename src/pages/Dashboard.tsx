@@ -4,7 +4,9 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { supabase } from "@/integrations/supabase/client";
 import Navigation from "@/components/Navigation";
 import SimulationPreview from "@/components/SimulationPreview";
-import { Car, Clock, TrendingUp, AlertTriangle, Activity } from "lucide-react";
+import { Car, Clock, TrendingUp, AlertTriangle, Activity, Zap, Shield } from "lucide-react";
+import { useRealTimeData } from "@/hooks/useRealTimeData";
+import { motion } from "framer-motion";
 
 interface Detection {
   id: string;
@@ -26,6 +28,9 @@ const Dashboard = () => {
   const [detections, setDetections] = useState<Detection[]>([]);
   const [junctionStats, setJunctionStats] = useState<JunctionStat[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Use real-time data hook
+  const realTimeData = useRealTimeData('main', 30000);
 
   useEffect(() => {
     fetchData();
@@ -78,7 +83,7 @@ const Dashboard = () => {
     ? junctionStats[0].recommended_green_time 
     : 45;
 
-  if (loading) {
+  if (loading || realTimeData.loading) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
@@ -99,67 +104,128 @@ const Dashboard = () => {
           <p className="text-muted-foreground">Real-time traffic analytics and optimization insights</p>
         </div>
 
+        {/* Emergency Alerts */}
+        {realTimeData.emergencyAlerts.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <div className="bg-danger/10 border border-danger/20 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Shield className="h-5 w-5 text-danger" />
+                <span className="font-semibold text-danger">Emergency Alert</span>
+              </div>
+              {realTimeData.emergencyAlerts.map((alert, index) => (
+                <div key={index} className="text-sm text-danger/80">
+                  {alert.message}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {/* Key Metrics */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-primary/10 rounded-full">
-                  <Car className="h-6 w-6 text-primary" />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-primary/10 rounded-full">
+                    <Car className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Live Vehicle Count</p>
+                    <p className="text-2xl font-bold">{realTimeData.trafficDensity.vehicleCount}</p>
+                    <p className="text-xs text-success">
+                      {realTimeData.trafficDensity.congestionLevel} congestion
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Vehicles</p>
-                  <p className="text-2xl font-bold">{detections.reduce((acc, d) => acc + d.vehicles_count, 0) || 247}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-success/10 rounded-full">
-                  <Clock className="h-6 w-6 text-success" />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-success/10 rounded-full">
+                    <Clock className="h-6 w-6 text-success" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Optimal Green Time</p>
+                    <p className="text-2xl font-bold">{realTimeData.signalTiming.greenTime}s</p>
+                    <p className="text-xs text-muted-foreground">
+                      Cycle: {realTimeData.signalTiming.cycleTime}s
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Avg Green Time</p>
-                  <p className="text-2xl font-bold">{recommendedGreenTime}s</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-warning/10 rounded-full">
-                  <TrendingUp className="h-6 w-6 text-warning" />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-warning/10 rounded-full">
+                    <TrendingUp className="h-6 w-6 text-warning" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Traffic Density</p>
+                    <p className="text-2xl font-bold">
+                      {(realTimeData.trafficDensity.density * 100).toFixed(0)}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Avg Speed: {realTimeData.trafficDensity.averageSpeed}km/h
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Avg Density</p>
-                  <p className="text-2xl font-bold">
-                    {junctionStats.length > 0 
-                      ? junctionStats[0].avg_density.toFixed(1) 
-                      : '0.7'}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-danger/10 rounded-full">
-                  <AlertTriangle className="h-6 w-6 text-danger" />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4">
+                  <div className={`p-3 rounded-full ${realTimeData.emergencyVehicles.length > 0 ? 'bg-danger/10' : 'bg-accent/10'}`}>
+                    {realTimeData.emergencyVehicles.length > 0 ? (
+                      <Zap className="h-6 w-6 text-danger" />
+                    ) : (
+                      <AlertTriangle className="h-6 w-6 text-accent" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">System Status</p>
+                    <p className="text-2xl font-bold">
+                      {realTimeData.emergencyVehicles.length > 0 ? 'PRIORITY' : 'NORMAL'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {realTimeData.isConnected ? 'Connected' : 'Offline'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Active Junctions</p>
-                  <p className="text-2xl font-bold">{new Set(detections.map(d => d.junction_id)).size || 3}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
@@ -232,15 +298,15 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-success mb-1">{recommendedGreenTime}s</div>
+                  <div className="text-2xl font-bold text-success mb-1">{realTimeData.signalTiming.greenTime}s</div>
                   <p className="text-sm text-muted-foreground">Recommended Green Time</p>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-warning mb-1">15%</div>
-                  <p className="text-sm text-muted-foreground">Efficiency Improvement</p>
+                  <div className="text-2xl font-bold text-warning mb-1">{realTimeData.signalTiming.efficiency.toFixed(0)}%</div>
+                  <p className="text-sm text-muted-foreground">Traffic Efficiency</p>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-primary mb-1">2.3min</div>
+                  <div className="text-2xl font-bold text-primary mb-1">{realTimeData.signalTiming.waitTimeReduction.toFixed(1)}s</div>
                   <p className="text-sm text-muted-foreground">Wait Time Reduction</p>
                 </div>
               </CardContent>
