@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import Navigation from "@/components/Navigation";
-import { Car, Clock, TrendingUp, AlertTriangle } from "lucide-react";
+import SimulationPreview from "@/components/SimulationPreview";
+import { Car, Clock, TrendingUp, AlertTriangle, Activity } from "lucide-react";
 
 interface Detection {
   id: string;

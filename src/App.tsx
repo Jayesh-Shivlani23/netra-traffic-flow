@@ -8,7 +8,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import Index from "./pages/Index";
 import Upload from "./pages/Upload";
 import Dashboard from "./pages/Dashboard";
-import Simulation from "./pages/Simulation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,7 +24,6 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/upload" element={<Upload />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/simulation" element={<Simulation />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
