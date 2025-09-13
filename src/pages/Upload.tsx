@@ -144,7 +144,7 @@ const UploadAnalyze = () => {
         // Extract frame as base64
         const frameBase64 = await extractFrameAsBase64(video, timeInSeconds);
         
-        // Send to Roboflow API
+        // Send to Roboflow API using the exact format provided
         const response = await fetch('https://serverless.roboflow.com/infer/workflows/jayesh-ayynl/custom-workflow', {
           method: 'POST',
           headers: {
@@ -163,6 +163,7 @@ const UploadAnalyze = () => {
         }
 
         const result = await response.json();
+        console.log(result);
         const detections = result.outputs || result.data || [];
         
         // Process the vehicle detections from Roboflow API
