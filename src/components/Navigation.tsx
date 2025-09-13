@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "react-router-dom";
-import { Car, Upload, BarChart3, Zap, Moon, Sun } from "lucide-react";
+import { Car, Upload, BarChart3, Moon, Sun } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { motion } from "framer-motion";
 
@@ -12,7 +12,6 @@ const Navigation = () => {
     { path: "/", label: "Home", icon: Car },
     { path: "/upload", label: "Upload & Analyze", icon: Upload },
     { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
-    { path: "/simulation", label: "Simulation", icon: Zap },
   ];
 
   return (

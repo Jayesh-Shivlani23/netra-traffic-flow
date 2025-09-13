@@ -96,13 +96,16 @@ const UploadAnalyze = () => {
     ctx.font = '14px Arial';
     ctx.fillStyle = '#00ff00';
 
-    boxes.forEach((box) => {
-      const [x1, y1, x2, y2] = box.bbox;
-      const width = x2 - x1;
-      const height = y2 - y1;
+    boxes.forEach((detection) => {
+      const x = detection.x || 0;
+      const y = detection.y || 0; 
+      const width = detection.width || 0;
+      const height = detection.height || 0;
+      const confidence = detection.confidence || 0;
+      const className = detection.class || 'vehicle';
       
-      ctx.strokeRect(x1, y1, width, height);
-      ctx.fillText(`${box.class} (${(box.confidence * 100).toFixed(1)}%)`, x1, y1 - 5);
+      ctx.strokeRect(x - width/2, y - height/2, width, height);
+      ctx.fillText(`${className} (${(confidence * 100).toFixed(1)}%)`, x - width/2, y - height/2 - 5);
     });
   };
 
@@ -141,14 +144,17 @@ const UploadAnalyze = () => {
         // Extract frame as base64
         const frameBase64 = await extractFrameAsBase64(video, timeInSeconds);
         
-        // Send to Hugging Face Space
-        const response = await fetch('https://jayesh111206-netra.hf.space/api/predict/', {
+        // Send to Roboflow API
+        const response = await fetch('https://serverless.roboflow.com/infer/workflows/jayesh-ayynl/custom-workflow', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            data: [`data:image/jpeg;base64,${frameBase64}`]
+            api_key: 'Njklsz3mOfD0zFHE0vvz',
+            inputs: {
+              "image": {"type": "base64", "value": frameBase64}
+            }
           })
         });
 
@@ -157,12 +163,11 @@ const UploadAnalyze = () => {
         }
 
         const result = await response.json();
-        const boxes = result.data || [];
+        const detections = result.outputs || result.data || [];
         
-        // Count vehicles (filter for vehicle classes)
-        const vehicleClasses = ['car', 'truck', 'bus', 'motorcycle', 'bicycle', 'vehicle'];
-        const vehicleBoxes = boxes.filter((box: any) => 
-          vehicleClasses.some(cls => box.class?.toLowerCase().includes(cls))
+        // Process the vehicle detections from Roboflow API
+        const vehicleBoxes = detections.filter((detection: any) => 
+          detection.class && ['car', 'truck', 'bus', 'motorcycle', 'bicycle', 'vehicle'].includes(detection.class.toLowerCase())
         );
         
         const vehicleCount = vehicleBoxes.length;

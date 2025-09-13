@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import Navigation from "@/components/Navigation";
-import SimulationPreview from "@/components/SimulationPreview";
+
 import { Car, Clock, TrendingUp, AlertTriangle, Activity, Zap, Shield } from "lucide-react";
 import { useRealTimeData } from "@/hooks/useRealTimeData";
 import { motion } from "framer-motion";
@@ -284,10 +284,8 @@ const Dashboard = () => {
             </Card>
           </div>
 
-          {/* Simulation Preview - Third column */}
+          {/* Optimization Stats - Third column */}
           <div className="space-y-6">
-            <SimulationPreview />
-            
             {/* Optimization Stats */}
             <Card className="shadow-[var(--shadow-card)]">
               <CardHeader>
