@@ -40,7 +40,8 @@ const UploadAnalyze = () => {
           description: "Initializing vehicle detection model...",
         });
         
-        const detector = await pipeline("object-detection", "ArrayDice/Vehicle_Detection_Model");
+        // Use YOLOv10n which has ONNX support for browsers
+        const detector = await pipeline("object-detection", "onnx-community/yolov10n");
         setModel(detector);
         
         toast({
