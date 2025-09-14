@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -7,23 +7,60 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import Navigation from "@/components/Navigation";
 import { motion } from "framer-motion";
+import { pipeline } from "@huggingface/transformers";
 
 const UploadAnalyze = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string>("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isModelLoading, setIsModelLoading] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [model, setModel] = useState<any>(null);
   const [analysisResults, setAnalysisResults] = useState<{
     totalFrames: number;
     avgVehicles: number;
     avgDensity: number;
     detections: Array<{ frame: number; vehicles: number; density: number; boxes: any[] }>;
   } | null>(null);
+  const [liveDetections, setLiveDetections] = useState<any[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const animationFrameRef = useRef<number>();
   const { toast } = useToast();
+
+  // Initialize the Hugging Face model
+  useEffect(() => {
+    const initializeModel = async () => {
+      try {
+        setIsModelLoading(true);
+        toast({
+          title: "Loading AI model",
+          description: "Initializing vehicle detection model...",
+        });
+        
+        const detector = await pipeline("object-detection", "ArrayDice/Vehicle_Detection_Model");
+        setModel(detector);
+        
+        toast({
+          title: "Model loaded successfully",
+          description: "Ready for vehicle detection",
+        });
+      } catch (error) {
+        console.error('Error loading model:', error);
+        toast({
+          title: "Model loading failed",
+          description: "Please refresh the page to try again",
+          variant: "destructive",
+        });
+      } finally {
+        setIsModelLoading(false);
+      }
+    };
+
+    initializeModel();
+  }, []);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -63,26 +100,7 @@ const UploadAnalyze = () => {
     }
   };
 
-  const extractFrameAsBase64 = (video: HTMLVideoElement, time: number): Promise<string> => {
-    return new Promise((resolve) => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d')!;
-      
-      video.currentTime = time;
-      video.addEventListener('seeked', function onSeeked() {
-        video.removeEventListener('seeked', onSeeked);
-        
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-        
-        const base64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
-        resolve(base64);
-      });
-    });
-  };
-
-  const drawBoundingBoxes = (boxes: any[], frameWidth: number, frameHeight: number) => {
+  const drawBoundingBoxes = (detections: any[], frameWidth: number, frameHeight: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -92,28 +110,89 @@ const UploadAnalyze = () => {
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = '#00ff00';
-    ctx.lineWidth = 2;
-    ctx.font = '14px Arial';
+    ctx.lineWidth = 3;
+    ctx.font = '16px Arial';
     ctx.fillStyle = '#00ff00';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    ctx.shadowBlur = 4;
 
-    boxes.forEach((detection) => {
-      const x = detection.x || 0;
-      const y = detection.y || 0; 
-      const width = detection.width || 0;
-      const height = detection.height || 0;
-      const confidence = detection.confidence || 0;
-      const className = detection.class || 'vehicle';
+    detections.forEach((detection) => {
+      const box = detection.box;
+      const x = box.xmin;
+      const y = box.ymin;
+      const width = box.xmax - box.xmin;
+      const height = box.ymax - box.ymin;
+      const confidence = detection.score || 0;
+      const label = detection.label || 'vehicle';
       
-      ctx.strokeRect(x - width/2, y - height/2, width, height);
-      ctx.fillText(`${className} (${(confidence * 100).toFixed(1)}%)`, x - width/2, y - height/2 - 5);
+      // Draw bounding box
+      ctx.strokeRect(x, y, width, height);
+      
+      // Draw label background
+      const labelText = `${label} (${(confidence * 100).toFixed(1)}%)`;
+      const textMetrics = ctx.measureText(labelText);
+      ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
+      ctx.fillRect(x, y - 25, textMetrics.width + 10, 25);
+      
+      // Draw label text
+      ctx.fillStyle = '#000000';
+      ctx.fillText(labelText, x + 5, y - 8);
+      ctx.fillStyle = '#00ff00';
     });
   };
 
+  // Live detection during video playback
+  const performLiveDetection = async () => {
+    if (!model || !videoRef.current || !isPlaying) return;
+
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+    
+    try {
+      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      const detections = await model(imageDataUrl);
+      
+      // Filter for vehicles only
+      const vehicleDetections = detections.filter((detection: any) => 
+        detection.label && ['car', 'truck', 'bus', 'motorcycle', 'bicycle', 'person', 'vehicle'].includes(detection.label.toLowerCase())
+      );
+      
+      setLiveDetections(vehicleDetections);
+      drawBoundingBoxes(vehicleDetections, video.videoWidth, video.videoHeight);
+    } catch (error) {
+      console.error('Live detection error:', error);
+    }
+
+    if (isPlaying) {
+      animationFrameRef.current = requestAnimationFrame(performLiveDetection);
+    }
+  };
+
+  // Start/stop live detection when video play state changes
+  useEffect(() => {
+    if (isPlaying && model) {
+      performLiveDetection();
+    } else if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [isPlaying, model]);
+
   const startAnalysis = async () => {
-    if (!selectedFile || !videoRef.current) {
+    if (!selectedFile || !videoRef.current || !model) {
       toast({
-        title: "No video selected",
-        description: "Please upload a video first",
+        title: !model ? "Model not loaded" : "No video selected",
+        description: !model ? "Please wait for the AI model to load" : "Please upload a video first",
         variant: "destructive",
       });
       return;
@@ -125,7 +204,7 @@ const UploadAnalyze = () => {
     
     toast({
       title: "Analysis started",
-      description: "Extracting frames and processing...",
+      description: "Extracting frames and processing with AI model...",
     });
 
     try {
@@ -141,38 +220,38 @@ const UploadAnalyze = () => {
       for (let i = 0; i < totalFramesToAnalyze; i++) {
         const timeInSeconds = (i * frameInterval) / frameRate;
         
-        // Extract frame as base64
-        const frameBase64 = await extractFrameAsBase64(video, timeInSeconds);
+        // Extract frame as canvas image
+        video.currentTime = timeInSeconds;
+        await new Promise(resolve => video.addEventListener('seeked', resolve, { once: true }));
         
-        // Send to Roboflow API using the exact format provided
-        const response = await fetch('https://serverless.roboflow.com/infer/workflows/jayesh-ayynl/custom-workflow', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            api_key: 'Njklsz3mOfD0zFHE0vvz',
-            inputs: {
-              "image": {"type": "base64", "value": frameBase64}
-            }
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`API request failed: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log(result);
-        const detections = result.outputs || result.data || [];
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d')!;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
         
-        // Process the vehicle detections from Roboflow API
-        const vehicleBoxes = detections.filter((detection: any) => 
-          detection.class && ['car', 'truck', 'bus', 'motorcycle', 'bicycle', 'vehicle'].includes(detection.class.toLowerCase())
+        const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        
+        // Process with Hugging Face model
+        const modelResults = await model(imageDataUrl);
+        
+        // Filter for vehicles only
+        const vehicleDetections = modelResults.filter((detection: any) => 
+          detection.label && ['car', 'truck', 'bus', 'motorcycle', 'bicycle', 'person', 'vehicle'].includes(detection.label.toLowerCase())
         );
         
-        const vehicleCount = vehicleBoxes.length;
+        const vehicleCount = vehicleDetections.length;
         const density = vehicleCount / maxCapacity;
+
+        // Convert Hugging Face format to our format for storage
+        const formattedBoxes = vehicleDetections.map((detection: any) => ({
+          class: detection.label,
+          confidence: detection.score,
+          x: detection.box.xmin + (detection.box.xmax - detection.box.xmin) / 2,
+          y: detection.box.ymin + (detection.box.ymax - detection.box.ymin) / 2,
+          width: detection.box.xmax - detection.box.xmin,
+          height: detection.box.ymax - detection.box.ymin
+        }));
 
         // Store in Supabase
         const { error } = await supabase
@@ -181,7 +260,7 @@ const UploadAnalyze = () => {
             junction_id: 'junction_1', // Default junction ID
             frame_number: i,
             class: 'mixed_traffic',
-            bbox_json: vehicleBoxes,
+            bbox_json: formattedBoxes,
             vehicles_count: vehicleCount,
             density: density
           });
@@ -194,12 +273,12 @@ const UploadAnalyze = () => {
           frame: i,
           vehicles: vehicleCount,
           density: density,
-          boxes: vehicleBoxes
+          boxes: vehicleDetections
         });
 
         // Draw bounding boxes on the last frame
         if (i === totalFramesToAnalyze - 1) {
-          drawBoundingBoxes(vehicleBoxes, video.videoWidth, video.videoHeight);
+          drawBoundingBoxes(vehicleDetections, video.videoWidth, video.videoHeight);
         }
 
         // Update progress
@@ -209,6 +288,15 @@ const UploadAnalyze = () => {
       // Calculate summary statistics
       const avgVehicles = detections.reduce((sum, d) => sum + d.vehicles, 0) / detections.length;
       const avgDensity = detections.reduce((sum, d) => sum + d.density, 0) / detections.length;
+
+      // Store junction stats
+      await supabase
+        .from('junction_stats')
+        .upsert({
+          junction_id: 'junction_1',
+          avg_density: avgDensity,
+          recommended_green_time: Math.max(30, Math.min(120, Math.round(avgDensity * 180)))
+        });
 
       setAnalysisResults({
         totalFrames: totalFramesToAnalyze,
@@ -337,15 +425,15 @@ const UploadAnalyze = () => {
                       <Button 
                         onClick={startAnalysis} 
                         className="w-full gradient-primary shadow-[var(--shadow-soft)]" 
-                        disabled={isAnalyzing}
+                        disabled={isAnalyzing || isModelLoading || !model}
                       >
                         <motion.div
-                          animate={isAnalyzing ? { rotate: 360 } : {}}
-                          transition={isAnalyzing ? { duration: 2, repeat: Infinity, ease: "linear" } : {}}
+                          animate={(isAnalyzing || isModelLoading) ? { rotate: 360 } : {}}
+                          transition={(isAnalyzing || isModelLoading) ? { duration: 2, repeat: Infinity, ease: "linear" } : {}}
                         >
                           <Zap className="h-4 w-4 mr-2" />
                         </motion.div>
-                        {isAnalyzing ? "Analyzing..." : "Start AI Analysis"}
+                        {isModelLoading ? "Loading AI Model..." : isAnalyzing ? "Analyzing..." : !model ? "Model Loading..." : "Start AI Analysis"}
                       </Button>
                     </motion.div>
 
@@ -394,7 +482,7 @@ const UploadAnalyze = () => {
                       <canvas
                         ref={canvasRef}
                         className="absolute inset-0 pointer-events-none"
-                        style={{ mixBlendMode: 'multiply' }}
+                        style={{ mixBlendMode: 'normal' }}
                       />
                     </>
                   ) : (
