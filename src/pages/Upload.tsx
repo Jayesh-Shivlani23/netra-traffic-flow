@@ -40,8 +40,12 @@ const UploadAnalyze = () => {
           description: "Initializing vehicle detection model...",
         });
         
-        // Use YOLOv10n which has ONNX support for browsers
-        const detector = await pipeline("object-detection", "onnx-community/yolov10n");
+        // Use a supported, browser-friendly DETR model with device fallback
+        const detector = await pipeline(
+          "object-detection",
+          "Xenova/detr-resnet-50",
+          { device: (navigator as any)?.gpu ? "webgpu" : "wasm" }
+        );
         setModel(detector);
         
         toast({
