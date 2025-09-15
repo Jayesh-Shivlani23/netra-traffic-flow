@@ -159,8 +159,13 @@ const UploadAnalyze = () => {
     ctx.drawImage(video, 0, 0);
     
     try {
-      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-      const detections = await model(imageDataUrl);
+      // Convert canvas to blob and create object URL for the model
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.8);
+      });
+      const imageUrl = URL.createObjectURL(blob);
+      const detections = await model(imageUrl);
+      URL.revokeObjectURL(imageUrl); // Clean up
       
       // Filter for vehicles only
       const vehicleDetections = detections.filter((detection: any) => 
@@ -235,10 +240,15 @@ const UploadAnalyze = () => {
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0);
         
-        const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        // Convert canvas to blob and create object URL for the model
+        const blob = await new Promise<Blob>((resolve) => {
+          canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.8);
+        });
+        const imageUrl = URL.createObjectURL(blob);
         
         // Process with Hugging Face model
-        const modelResults = await model(imageDataUrl);
+        const modelResults = await model(imageUrl);
+        URL.revokeObjectURL(imageUrl); // Clean up
         
         // Filter for vehicles only
         const vehicleDetections = modelResults.filter((detection: any) => 
