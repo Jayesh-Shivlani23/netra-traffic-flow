@@ -7,7 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import Navigation from "@/components/Navigation";
 import { motion } from "framer-motion";
-import { YOLOv8Detector } from "@/utils/yolov8";
+import { pipeline } from "@huggingface/transformers";
+
 const UploadAnalyze = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string>("");
@@ -39,10 +40,14 @@ const UploadAnalyze = () => {
           description: "Initializing vehicle detection model...",
         });
         
-        // Initialize YOLOv8 (ONNXRuntime Web) with WebGPU/WASM fallback
-        const detector = new YOLOv8Detector();
-        await detector.load("https://huggingface.co/SpotLab/YOLOv8Detection/resolve/3005c6751fb19cdeb6b10c066185908faf66a097/yolov8n.onnx");
-        setModel(detector as any);
+        // Use a supported, browser-friendly DETR model with device fallback
+        const detector = await pipeline(
+          "object-detection",
+          "Xenova/detr-resnet-50",
+          { device: (navigator as any)?.gpu ? "webgpu" : "wasm" }
+        );
+        setModel(detector);
+        
         toast({
           title: "Model loaded successfully",
           description: "Ready for vehicle detection",
@@ -153,17 +158,20 @@ const UploadAnalyze = () => {
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
     
-      try {
-        const detections = await model.detect(video);
-        
-        // Filter for vehicles only (already filtered in model)
-        const vehicleDetections = detections;
-        
-        setLiveDetections(vehicleDetections);
-        drawBoundingBoxes(vehicleDetections, video.videoWidth, video.videoHeight);
-      } catch (error) {
-        console.error('Live detection error:', error);
-      }
+    try {
+      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      const detections = await model(imageDataUrl);
+      
+      // Filter for vehicles only
+      const vehicleDetections = detections.filter((detection: any) => 
+        detection.label && ['car', 'truck', 'bus', 'motorcycle', 'bicycle', 'person', 'vehicle'].includes(detection.label.toLowerCase())
+      );
+      
+      setLiveDetections(vehicleDetections);
+      drawBoundingBoxes(vehicleDetections, video.videoWidth, video.videoHeight);
+    } catch (error) {
+      console.error('Live detection error:', error);
+    }
 
     if (isPlaying) {
       animationFrameRef.current = requestAnimationFrame(performLiveDetection);
@@ -227,10 +235,15 @@ const UploadAnalyze = () => {
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0);
         
-        // Process with YOLOv8 model
-        const modelResults = await model.detect(video);
-        // Filter for vehicles only (already filtered in model)
-        const vehicleDetections = modelResults;
+        const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        
+        // Process with Hugging Face model
+        const modelResults = await model(imageDataUrl);
+        
+        // Filter for vehicles only
+        const vehicleDetections = modelResults.filter((detection: any) => 
+          detection.label && ['car', 'truck', 'bus', 'motorcycle', 'bicycle', 'person', 'vehicle'].includes(detection.label.toLowerCase())
+        );
         
         const vehicleCount = vehicleDetections.length;
         const density = vehicleCount / maxCapacity;
