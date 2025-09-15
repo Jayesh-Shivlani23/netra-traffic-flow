@@ -7,9 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import Navigation from "@/components/Navigation";
 import { motion } from "framer-motion";
-import { YOLOv8Detector, Detection } from "@/utils/yolov8";
-import { VideoAnalyzer } from "@/components/VideoAnalyzer";
-
+import { YOLOv8Detector } from "@/utils/yolov8";
 const UploadAnalyze = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string>("");
@@ -17,19 +15,21 @@ const UploadAnalyze = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isModelLoading, setIsModelLoading] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
-  const [model, setModel] = useState<YOLOv8Detector | null>(null);
+  const [model, setModel] = useState<any>(null);
   const [analysisResults, setAnalysisResults] = useState<{
     totalFrames: number;
     avgVehicles: number;
     avgDensity: number;
     detections: Array<{ frame: number; vehicles: number; density: number; boxes: any[] }>;
   } | null>(null);
-  const [liveDetections, setLiveDetections] = useState<Detection[]>([]);
+  const [liveDetections, setLiveDetections] = useState<any[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const animationFrameRef = useRef<number>();
   const { toast } = useToast();
 
-  // Initialize the YOLOv8 model
+  // Initialize the Hugging Face model
   useEffect(() => {
     const initializeModel = async () => {
       try {
@@ -39,11 +39,10 @@ const UploadAnalyze = () => {
           description: "Initializing vehicle detection model...",
         });
         
-        // Initialize YOLOv8 with a reliable ONNX model
+        // Initialize YOLOv8 with a working ONNX model
         const detector = new YOLOv8Detector();
-        // Use a reliable CDN source for the YOLOv8 model
-        await detector.load("https://huggingface.co/onnx-community/yolov8n/resolve/main/model.onnx");
-        setModel(detector);
+        await detector.load("https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8n.onnx");
+        setModel(detector as any);
         toast({
           title: "Model loaded successfully",
           description: "Ready for vehicle detection",
@@ -61,7 +60,7 @@ const UploadAnalyze = () => {
     };
 
     initializeModel();
-  }, [toast]);
+  }, []);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -101,6 +100,103 @@ const UploadAnalyze = () => {
     }
   };
 
+  const drawBoundingBoxes = (detections: any[], frameWidth: number, frameHeight: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d')!;
+    canvas.width = frameWidth;
+    canvas.height = frameHeight;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Vehicle type colors
+    const colors = {
+      car: '#00ff00',
+      truck: '#ff6b00', 
+      bus: '#0066ff',
+      motorcycle: '#ff00ff',
+      bicycle: '#ffff00',
+      person: '#ff0000',
+      default: '#00ff00'
+    };
+
+    detections.forEach((detection) => {
+      const box = detection.box;
+      const x = Math.max(0, box.xmin);
+      const y = Math.max(0, box.ymin);
+      const width = Math.min(frameWidth - x, box.xmax - box.xmin);
+      const height = Math.min(frameHeight - y, box.ymax - box.ymin);
+      const confidence = detection.score || 0;
+      const label = detection.label || 'vehicle';
+      const color = colors[label] || colors.default;
+      
+      // Set drawing style
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.font = 'bold 14px Arial';
+      
+      // Draw bounding box
+      ctx.strokeRect(x, y, width, height);
+      
+      // Draw label background
+      const labelText = `${label} ${(confidence * 100).toFixed(0)}%`;
+      const textMetrics = ctx.measureText(labelText);
+      const textHeight = 20;
+      const textY = y > textHeight ? y - 5 : y + height + textHeight;
+      
+      ctx.fillStyle = color;
+      ctx.fillRect(x, textY - textHeight, textMetrics.width + 10, textHeight);
+      
+      // Draw label text
+      ctx.fillStyle = '#000000';
+      ctx.fillText(labelText, x + 5, textY - 6);
+    });
+  };
+
+  // Live detection during video playback
+  const performLiveDetection = async () => {
+    if (!model || !videoRef.current || !isPlaying) return;
+
+    const video = videoRef.current;
+    
+    // Skip if video dimensions not available
+    if (!video.videoWidth || !video.videoHeight) {
+      animationFrameRef.current = requestAnimationFrame(performLiveDetection);
+      return;
+    }
+    
+    try {
+      const detections = await model.detect(video);
+      
+      setLiveDetections(detections);
+      drawBoundingBoxes(detections, video.videoWidth, video.videoHeight);
+      
+      console.log(`Frame detection: ${detections.length} vehicles found`);
+    } catch (error) {
+      console.error('Live detection error:', error);
+    }
+
+    if (isPlaying && videoRef.current && !videoRef.current.paused) {
+      animationFrameRef.current = requestAnimationFrame(performLiveDetection);
+    }
+  };
+
+  // Start/stop live detection when video play state changes
+  useEffect(() => {
+    if (isPlaying && model) {
+      performLiveDetection();
+    } else if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [isPlaying, model]);
+
   const startAnalysis = async () => {
     if (!selectedFile || !videoRef.current || !model) {
       toast({
@@ -133,11 +229,17 @@ const UploadAnalyze = () => {
       for (let i = 0; i < totalFramesToAnalyze; i++) {
         const timeInSeconds = (i * frameInterval) / frameRate;
         
-        // Extract frame
+        // Extract frame as canvas image
         video.currentTime = timeInSeconds;
         await new Promise(resolve => video.addEventListener('seeked', resolve, { once: true }));
         
-        // Wait for frame to be ready
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d')!;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        
+        // Wait a bit for the frame to be ready
         await new Promise(resolve => setTimeout(resolve, 100));
         
         // Process with YOLOv8 model
@@ -147,7 +249,7 @@ const UploadAnalyze = () => {
         const vehicleCount = vehicleDetections.length;
         const density = vehicleCount / maxCapacity;
 
-        // Convert detection format for storage
+        // Convert Hugging Face format to our format for storage
         const formattedBoxes = vehicleDetections.map((detection: any) => ({
           class: detection.label,
           confidence: detection.score,
@@ -161,7 +263,7 @@ const UploadAnalyze = () => {
         const { error } = await supabase
           .from('detections')
           .insert({
-            junction_id: 'junction_1',
+            junction_id: 'junction_1', // Default junction ID
             frame_number: i,
             class: 'mixed_traffic',
             bbox_json: formattedBoxes,
@@ -179,6 +281,11 @@ const UploadAnalyze = () => {
           density: density,
           boxes: vehicleDetections
         });
+
+        // Draw bounding boxes on the last frame
+        if (i === totalFramesToAnalyze - 1) {
+          drawBoundingBoxes(vehicleDetections, video.videoWidth, video.videoHeight);
+        }
 
         // Update progress
         setAnalysisProgress(((i + 1) / totalFramesToAnalyze) * 100);
@@ -299,6 +406,27 @@ const UploadAnalyze = () => {
                     animate={{ opacity: 1, height: "auto" }}
                     transition={{ duration: 0.5 }}
                   >
+                    <div className="flex items-center space-x-4">
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                        <Button
+                          onClick={togglePlayPause}
+                          variant="outline"
+                          size="sm"
+                        >
+                          {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                        </Button>
+                      </motion.div>
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                        <Button
+                          onClick={stopVideo}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Square className="h-4 w-4" />
+                        </Button>
+                      </motion.div>
+                    </div>
+                    
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                       <Button 
                         onClick={startAnalysis} 
@@ -344,60 +472,53 @@ const UploadAnalyze = () => {
           >
             <Card className="shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-soft)] transition-all duration-300">
               <CardHeader>
-                <CardTitle>Live Video Analysis</CardTitle>
+                <CardTitle>Video Preview</CardTitle>
               </CardHeader>
               <CardContent>
-                {videoUrl ? (
-                  <VideoAnalyzer
-                    videoSrc={videoUrl}
-                    isPlaying={isPlaying}
-                    model={model}
-                    onDetectionUpdate={(detections) => setLiveDetections(detections)}
-                  />
-                ) : (
-                  <div className="relative aspect-video bg-gradient-to-br from-muted/30 to-muted/60 rounded-xl overflow-hidden border border-border/50 flex items-center justify-center">
-                    <motion.div
-                      animate={{ opacity: [0.5, 1, 0.5] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                      className="text-center text-muted-foreground"
-                    >
-                      <FileVideo className="h-16 w-16 mx-auto mb-4" />
-                      <p>No video selected</p>
-                    </motion.div>
-                  </div>
-                )}
-                
-                {/* Video Controls */}
-                {videoUrl && (
-                  <div className="mt-4 flex items-center space-x-4">
-                    <video
-                      ref={videoRef}
-                      src={videoUrl}
-                      className="hidden"
-                      onPlay={() => setIsPlaying(true)}
-                      onPause={() => setIsPlaying(false)}
-                      controls
-                    />
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        onClick={togglePlayPause}
-                        variant="outline"
-                        size="sm"
+                <div className="relative aspect-video bg-gradient-to-br from-muted/30 to-muted/60 rounded-xl overflow-hidden border border-border/50">
+                  {videoUrl ? (
+                    <>
+                      <video
+                        ref={videoRef}
+                        src={videoUrl}
+                        className="w-full h-full object-cover"
+                        onPlay={() => setIsPlaying(true)}
+                        onPause={() => setIsPlaying(false)}
+                        onLoadedMetadata={() => {
+                          console.log('Video loaded:', {
+                            width: videoRef.current?.videoWidth,
+                            height: videoRef.current?.videoHeight,
+                            duration: videoRef.current?.duration
+                          });
+                        }}
+                      />
+                      <canvas
+                        ref={canvasRef}
+                        className="absolute inset-0 pointer-events-none w-full h-full"
+                        style={{ 
+                          mixBlendMode: 'normal',
+                          pointerEvents: 'none'
+                        }}
+                      />
+                      {liveDetections.length > 0 && (
+                        <div className="absolute top-2 right-2 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-medium">
+                          {liveDetections.length} vehicles detected
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                      <motion.div
+                        animate={{ opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="text-center"
                       >
-                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      </Button>
-                    </motion.div>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        onClick={stopVideo}
-                        variant="outline"
-                        size="sm"
-                      >
-                        <Square className="h-4 w-4" />
-                      </Button>
-                    </motion.div>
-                  </div>
-                )}
+                        <FileVideo className="h-16 w-16 mx-auto mb-4" />
+                        <p>No video selected</p>
+                      </motion.div>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </motion.div>

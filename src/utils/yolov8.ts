@@ -29,19 +29,15 @@ export class YOLOv8Detector {
       // Configure ONNX Runtime for better browser compatibility
       ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/';
       
-      console.log('Loading YOLOv8 model from:', modelUrl);
-      
       this.session = await ort.InferenceSession.create(modelUrl, {
         executionProviders: ['wasm'],
         graphOptimizationLevel: 'all',
         executionMode: 'sequential'
       });
       this.inputName = this.session.inputNames[0];
-      
       console.log('YOLOv8 model loaded successfully:', {
         inputs: this.session.inputNames,
-        outputs: this.session.outputNames,
-        inputName: this.inputName
+        outputs: this.session.outputNames
       });
     } catch (error) {
       console.error('Failed to load YOLOv8 model:', error);
