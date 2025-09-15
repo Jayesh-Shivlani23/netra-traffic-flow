@@ -2,7 +2,8 @@
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/43428925-7af9-425d-94d3-540465ed2495
+**Website URL**: https://lovable.dev/projects/43428925-7af9-425d-94d3-540465ed2495
+**Huggingface URL** : https://huggingface.co/spaces/jayesh111206/netra
 
 ## How can I edit this code?
 
