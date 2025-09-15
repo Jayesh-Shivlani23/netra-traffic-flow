@@ -39,9 +39,9 @@ const UploadAnalyze = () => {
           description: "Initializing vehicle detection model...",
         });
         
-        // Initialize YOLOv8 (ONNXRuntime Web) with WebGPU/WASM fallback
+        // Initialize YOLOv8 with a working ONNX model
         const detector = new YOLOv8Detector();
-        await detector.load("https://huggingface.co/SpotLab/YOLOv8Detection/resolve/3005c6751fb19cdeb6b10c066185908faf66a097/yolov8n.onnx");
+        await detector.load("https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8n.onnx");
         setModel(detector as any);
         toast({
           title: "Model loaded successfully",
@@ -109,35 +109,48 @@ const UploadAnalyze = () => {
     canvas.height = frameHeight;
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = '#00ff00';
-    ctx.lineWidth = 3;
-    ctx.font = '16px Arial';
-    ctx.fillStyle = '#00ff00';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-    ctx.shadowBlur = 4;
+    
+    // Vehicle type colors
+    const colors = {
+      car: '#00ff00',
+      truck: '#ff6b00', 
+      bus: '#0066ff',
+      motorcycle: '#ff00ff',
+      bicycle: '#ffff00',
+      person: '#ff0000',
+      default: '#00ff00'
+    };
 
     detections.forEach((detection) => {
       const box = detection.box;
-      const x = box.xmin;
-      const y = box.ymin;
-      const width = box.xmax - box.xmin;
-      const height = box.ymax - box.ymin;
+      const x = Math.max(0, box.xmin);
+      const y = Math.max(0, box.ymin);
+      const width = Math.min(frameWidth - x, box.xmax - box.xmin);
+      const height = Math.min(frameHeight - y, box.ymax - box.ymin);
       const confidence = detection.score || 0;
       const label = detection.label || 'vehicle';
+      const color = colors[label] || colors.default;
+      
+      // Set drawing style
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.font = 'bold 14px Arial';
       
       // Draw bounding box
       ctx.strokeRect(x, y, width, height);
       
       // Draw label background
-      const labelText = `${label} (${(confidence * 100).toFixed(1)}%)`;
+      const labelText = `${label} ${(confidence * 100).toFixed(0)}%`;
       const textMetrics = ctx.measureText(labelText);
-      ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
-      ctx.fillRect(x, y - 25, textMetrics.width + 10, 25);
+      const textHeight = 20;
+      const textY = y > textHeight ? y - 5 : y + height + textHeight;
+      
+      ctx.fillStyle = color;
+      ctx.fillRect(x, textY - textHeight, textMetrics.width + 10, textHeight);
       
       // Draw label text
       ctx.fillStyle = '#000000';
-      ctx.fillText(labelText, x + 5, y - 8);
-      ctx.fillStyle = '#00ff00';
+      ctx.fillText(labelText, x + 5, textY - 6);
     });
   };
 
@@ -146,26 +159,25 @@ const UploadAnalyze = () => {
     if (!model || !videoRef.current || !isPlaying) return;
 
     const video = videoRef.current;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d')!;
     
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0);
+    // Skip if video dimensions not available
+    if (!video.videoWidth || !video.videoHeight) {
+      animationFrameRef.current = requestAnimationFrame(performLiveDetection);
+      return;
+    }
     
-      try {
-        const detections = await model.detect(video);
-        
-        // Filter for vehicles only (already filtered in model)
-        const vehicleDetections = detections;
-        
-        setLiveDetections(vehicleDetections);
-        drawBoundingBoxes(vehicleDetections, video.videoWidth, video.videoHeight);
-      } catch (error) {
-        console.error('Live detection error:', error);
-      }
+    try {
+      const detections = await model.detect(video);
+      
+      setLiveDetections(detections);
+      drawBoundingBoxes(detections, video.videoWidth, video.videoHeight);
+      
+      console.log(`Frame detection: ${detections.length} vehicles found`);
+    } catch (error) {
+      console.error('Live detection error:', error);
+    }
 
-    if (isPlaying) {
+    if (isPlaying && videoRef.current && !videoRef.current.paused) {
       animationFrameRef.current = requestAnimationFrame(performLiveDetection);
     }
   };
@@ -227,9 +239,11 @@ const UploadAnalyze = () => {
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0);
         
+        // Wait a bit for the frame to be ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Process with YOLOv8 model
         const modelResults = await model.detect(video);
-        // Filter for vehicles only (already filtered in model)
         const vehicleDetections = modelResults;
         
         const vehicleCount = vehicleDetections.length;
@@ -470,12 +484,27 @@ const UploadAnalyze = () => {
                         className="w-full h-full object-cover"
                         onPlay={() => setIsPlaying(true)}
                         onPause={() => setIsPlaying(false)}
+                        onLoadedMetadata={() => {
+                          console.log('Video loaded:', {
+                            width: videoRef.current?.videoWidth,
+                            height: videoRef.current?.videoHeight,
+                            duration: videoRef.current?.duration
+                          });
+                        }}
                       />
                       <canvas
                         ref={canvasRef}
-                        className="absolute inset-0 pointer-events-none"
-                        style={{ mixBlendMode: 'normal' }}
+                        className="absolute inset-0 pointer-events-none w-full h-full"
+                        style={{ 
+                          mixBlendMode: 'normal',
+                          pointerEvents: 'none'
+                        }}
                       />
+                      {liveDetections.length > 0 && (
+                        <div className="absolute top-2 right-2 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-medium">
+                          {liveDetections.length} vehicles detected
+                        </div>
+                      )}
                     </>
                   ) : (
                     <div className="flex items-center justify-center h-full text-muted-foreground">
