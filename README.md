@@ -24,10 +24,3 @@ The goal is to enable **smart city traffic management** through vehicle detectio
 - **Deployment:** Hugging Face Spaces / Local Web Server  
 
 ---
-
-## 🚀 Setup Instructions
-
-### 1️⃣ Clone Repository
-```bash
-git clone https://github.com/<your-username>/Netra.git
-cd Netra
