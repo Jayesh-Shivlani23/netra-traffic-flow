@@ -7,8 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import Navigation from "@/components/Navigation";
 import { motion } from "framer-motion";
-import { pipeline } from "@huggingface/transformers";
-
+import { YOLOv8Detector } from "@/utils/yolov8";
 const UploadAnalyze = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string>("");
@@ -40,14 +39,10 @@ const UploadAnalyze = () => {
           description: "Initializing vehicle detection model...",
         });
         
-        // Use a supported, browser-friendly DETR model with device fallback
-        const detector = await pipeline(
-          "object-detection",
-          "Xenova/detr-resnet-50",
-          { device: (navigator as any)?.gpu ? "webgpu" : "wasm" }
-        );
-        setModel(detector);
-        
+        // Initialize YOLOv8 (ONNXRuntime Web) with WebGPU/WASM fallback
+        const detector = new YOLOv8Detector();
+        await detector.load("https://huggingface.co/SpotLab/YOLOv8Detection/resolve/3005c6751fb19cdeb6b10c066185908faf66a097/yolov8n.onnx");
+        setModel(detector as any);
         toast({
           title: "Model loaded successfully",
           description: "Ready for vehicle detection",
@@ -158,25 +153,17 @@ const UploadAnalyze = () => {
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
     
-    try {
-      // Convert canvas to blob and create object URL for the model
-      const blob = await new Promise<Blob>((resolve) => {
-        canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.8);
-      });
-      const imageUrl = URL.createObjectURL(blob);
-      const detections = await model(imageUrl);
-      URL.revokeObjectURL(imageUrl); // Clean up
-      
-      // Filter for vehicles only
-      const vehicleDetections = detections.filter((detection: any) => 
-        detection.label && ['car', 'truck', 'bus', 'motorcycle', 'bicycle', 'person', 'vehicle'].includes(detection.label.toLowerCase())
-      );
-      
-      setLiveDetections(vehicleDetections);
-      drawBoundingBoxes(vehicleDetections, video.videoWidth, video.videoHeight);
-    } catch (error) {
-      console.error('Live detection error:', error);
-    }
+      try {
+        const detections = await model.detect(video);
+        
+        // Filter for vehicles only (already filtered in model)
+        const vehicleDetections = detections;
+        
+        setLiveDetections(vehicleDetections);
+        drawBoundingBoxes(vehicleDetections, video.videoWidth, video.videoHeight);
+      } catch (error) {
+        console.error('Live detection error:', error);
+      }
 
     if (isPlaying) {
       animationFrameRef.current = requestAnimationFrame(performLiveDetection);
@@ -240,20 +227,10 @@ const UploadAnalyze = () => {
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0);
         
-        // Convert canvas to blob and create object URL for the model
-        const blob = await new Promise<Blob>((resolve) => {
-          canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.8);
-        });
-        const imageUrl = URL.createObjectURL(blob);
-        
-        // Process with Hugging Face model
-        const modelResults = await model(imageUrl);
-        URL.revokeObjectURL(imageUrl); // Clean up
-        
-        // Filter for vehicles only
-        const vehicleDetections = modelResults.filter((detection: any) => 
-          detection.label && ['car', 'truck', 'bus', 'motorcycle', 'bicycle', 'person', 'vehicle'].includes(detection.label.toLowerCase())
-        );
+        // Process with YOLOv8 model
+        const modelResults = await model.detect(video);
+        // Filter for vehicles only (already filtered in model)
+        const vehicleDetections = modelResults;
         
         const vehicleCount = vehicleDetections.length;
         const density = vehicleCount / maxCapacity;
