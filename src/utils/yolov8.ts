@@ -1,6 +1,16 @@
 import * as ort from 'onnxruntime-web';
 import 'onnxruntime-web/webgpu';
+import 'onnxruntime-web/wasm';
 
+// Tweak ORT WASM env for reliability/speed
+if (typeof navigator !== 'undefined') {
+  // Limit threads to avoid over-subscription on small devices
+  // @ts-ignore
+  ort.env.wasm.numThreads = Math.min(4, navigator.hardwareConcurrency || 2);
+}
+// Ensure SIMD path when available
+// @ts-ignore
+ort.env.wasm.simd = true;
 // Minimal COCO class list (first 20 for mapping, extend if needed)
 const COCO_CLASSES = [
   'person','bicycle','car','motorcycle','airplane','bus','train','truck','boat','traffic light',
@@ -25,10 +35,18 @@ export class YOLOv8Detector {
   private inputSize = 512; // 512x512 for faster inference
 
   async load(modelUrl: string) {
-    this.session = await ort.InferenceSession.create(modelUrl, {
-      executionProviders: ['webgpu', 'wasm'],
-      graphOptimizationLevel: 'all',
-    });
+    try {
+      this.session = await ort.InferenceSession.create(modelUrl, {
+        executionProviders: ['webgpu', 'wasm'],
+        graphOptimizationLevel: 'all',
+      });
+    } catch (e) {
+      console.warn('WebGPU load failed, retrying with WASM only...', e);
+      this.session = await ort.InferenceSession.create(modelUrl, {
+        executionProviders: ['wasm'],
+        graphOptimizationLevel: 'all',
+      });
+    }
     this.inputName = this.session.inputNames[0];
   }
 

@@ -33,31 +33,38 @@ const UploadAnalyze = () => {
   // Initialize the Hugging Face model
   useEffect(() => {
     const initializeModel = async () => {
-      try {
-        setIsModelLoading(true);
-        toast({
-          title: "Loading AI model",
-          description: "Initializing vehicle detection model...",
-        });
-        
-        // Initialize YOLOv8 (ONNXRuntime Web) with WebGPU/WASM fallback
-        const detector = new YOLOv8Detector();
-        await detector.load("https://huggingface.co/SpotLab/YOLOv8Detection/resolve/3005c6751fb19cdeb6b10c066185908faf66a097/yolov8n.onnx");
-        setModel(detector as any);
-        toast({
-          title: "Model loaded successfully",
-          description: "Ready for vehicle detection",
-        });
-      } catch (error) {
-        console.error('Error loading model:', error);
-        toast({
-          title: "Model loading failed",
-          description: "Please refresh the page to try again",
-          variant: "destructive",
-        });
-      } finally {
-        setIsModelLoading(false);
+      setIsModelLoading(true);
+      toast({ title: "Loading AI model", description: "Initializing vehicle detection model..." });
+
+      const urls = [
+        "https://huggingface.co/SpotLab/YOLOv8Detection/resolve/3005c6751fb19cdeb6b10c066185908faf66a097/yolov8n.onnx",
+      ];
+
+      let lastError: any = null;
+      for (const url of urls) {
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            const detector = new YOLOv8Detector();
+            await detector.load(url);
+            setModel(detector as any);
+            toast({ title: "Model loaded", description: `Ready for detection (attempt ${attempt})` });
+            setIsModelLoading(false);
+            return;
+          } catch (error) {
+            lastError = error;
+            console.error(`Model load failed (attempt ${attempt}) for ${url}:`, error);
+            await new Promise((r) => setTimeout(r, 600));
+          }
+        }
       }
+
+      toast({
+        title: "Model loading failed",
+        description: "Please retry in a moment. We'll keep optimizing the loader.",
+        variant: "destructive",
+      });
+      setIsModelLoading(false);
+      throw lastError;
     };
 
     initializeModel();
@@ -469,6 +476,10 @@ const UploadAnalyze = () => {
                         className="w-full h-full object-cover"
                         onPlay={() => setIsPlaying(true)}
                         onPause={() => setIsPlaying(false)}
+                        onLoadedMetadata={() => {
+                          const v = videoRef.current; const c = canvasRef.current;
+                          if (v && c) { c.width = v.videoWidth; c.height = v.videoHeight; }
+                        }}
                       />
                       <canvas
                         ref={canvasRef}
