@@ -27,6 +27,7 @@ const UploadAnalyze = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const animationFrameRef = useRef<number>();
+  const lastInferTimeRef = useRef<number>(0);
   const { toast } = useToast();
 
   // Initialize the Hugging Face model
@@ -145,25 +146,23 @@ const UploadAnalyze = () => {
   const performLiveDetection = async () => {
     if (!model || !videoRef.current || !isPlaying) return;
 
+    const now = performance.now();
+    const minIntervalMs = 120; // ~8 FPS target
+    if ((lastInferTimeRef.current || 0) > 0 && (now - lastInferTimeRef.current) < minIntervalMs) {
+      animationFrameRef.current = requestAnimationFrame(performLiveDetection);
+      return;
+    }
+    lastInferTimeRef.current = now;
+
     const video = videoRef.current;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d')!;
-    
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0);
-    
-      try {
-        const detections = await model.detect(video);
-        
-        // Filter for vehicles only (already filtered in model)
-        const vehicleDetections = detections;
-        
-        setLiveDetections(vehicleDetections);
-        drawBoundingBoxes(vehicleDetections, video.videoWidth, video.videoHeight);
-      } catch (error) {
-        console.error('Live detection error:', error);
-      }
+    try {
+      const detections = await model.detect(video);
+      const vehicleDetections = detections;
+      setLiveDetections(vehicleDetections);
+      drawBoundingBoxes(vehicleDetections, video.videoWidth, video.videoHeight);
+    } catch (error) {
+      console.error('Live detection error:', error);
+    }
 
     if (isPlaying) {
       animationFrameRef.current = requestAnimationFrame(performLiveDetection);
@@ -208,7 +207,7 @@ const UploadAnalyze = () => {
       const video = videoRef.current;
       const duration = video.duration;
       const frameRate = 30; // Assume 30 FPS
-      const frameInterval = 5; // Extract every 5th frame
+      const frameInterval = 10; // Extract every 10th frame for speed
       const totalFramesToAnalyze = Math.floor((duration * frameRate) / frameInterval);
       
       const detections: Array<{ frame: number; vehicles: number; density: number; boxes: any[] }> = [];

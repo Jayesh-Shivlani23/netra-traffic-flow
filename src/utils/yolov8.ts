@@ -22,11 +22,12 @@ export type Detection = {
 export class YOLOv8Detector {
   private session: ort.InferenceSession | null = null;
   private inputName: string | null = null;
-  private inputSize = 640; // 640x640
+  private inputSize = 512; // 512x512 for faster inference
 
   async load(modelUrl: string) {
     this.session = await ort.InferenceSession.create(modelUrl, {
-      executionProviders: ['webgpu', 'wasm']
+      executionProviders: ['webgpu', 'wasm'],
+      graphOptimizationLevel: 'all',
     });
     this.inputName = this.session.inputNames[0];
   }
